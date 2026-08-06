@@ -91,7 +91,7 @@ The prototype succeeds when a reviewer can:
 - Persisting, previewing, or downloading transfer-proof file contents.
 - Persisted request drafts.
 - A `Payment Processing` lifecycle state.
-- Separate alert, audit, project-portfolio, or department-detail modules.
+- Separate alert, audit, or department-detail modules.
 - Notifications and advanced analytics.
 - Browser-level end-to-end test automation.
 
@@ -107,6 +107,8 @@ All workflow actors are distinct people in the prototype. A requester cannot app
 | Finance Reviewer | Performs final financial-control approval | All requests |
 | Finance Payment Processor | Records evidence of externally completed Bank Transfers | Requests awaiting payment confirmation and completed payment confirmations |
 | Executive Viewer | Reviews company, department, project, and request information | All requests, read-only |
+
+Page visibility follows least privilege: Finance Reviewer and Executive Viewer can open the company Overview; Department Budget Owners can open a department-scoped Overview; Requesters and Line Managers can open only their permitted department Project allocations and Request Workspace; Finance Payment Processors open the payment-focused Request Workspace. Request and project data must remain scoped to the active actor even when the underlying project spans multiple departments.
 
 The Finance Reviewer cannot confirm payment. The Finance Payment Processor cannot perform Finance approval.
 
@@ -143,7 +145,7 @@ The immutable chronological record of meaningful business actions and decisions 
 
 ## 7. Information Architecture
 
-The prototype has three primary pages.
+The prototype has four primary pages: Overview, Projects, Project Detail, and Request Workspace.
 
 ### 7.1 Overview
 
@@ -154,14 +156,24 @@ Required components:
 - FY2027 summary.
 - Company-level Approved Budget, Allocated to Projects, Department Unallocated Budget, Approved Unpaid Commitments, and Payment-Confirmed Spend.
 - Department table with the same categories.
-- Ramadan Campaign card or row.
-- Global `New Request` action.
+- Project spotlight card or row linking into Projects or the selected Project Detail.
+- `New Request` action when the active actor is a Requester.
 - Role switcher.
 - `Reset Demo Data` action.
 
 Technology details may expand inline or in a drawer. A separate Department Detail route is not required.
 
-### 7.2 Project Detail
+### 7.2 Projects
+
+Purpose: make project records discoverable without placing one specific project in global navigation.
+
+Required components:
+
+- Project list with name, owner, status, dates, allocation, Available to Commit, and related request count.
+- Selection opens the corresponding Project Detail.
+- Projects remains the active parent destination while viewing a project detail.
+
+### 7.3 Project Detail
 
 Purpose: show the consolidated position of one cross-functional project without losing departmental ownership.
 
@@ -176,9 +188,9 @@ Required components:
 - Project-related requests.
 - `New Request` action prefilled with the selected Project Allocation.
 
-A separate Project Portfolio route is not required.
+A separate Department Detail route is not required.
 
-### 7.3 Request Workspace
+### 7.4 Request Workspace
 
 Purpose: combine request queues, request detail, approval actions, payment information, and Activity History.
 
@@ -591,8 +603,8 @@ A non-project request reduces that balance only when Finance approves it. Paymen
 ## 17. Primary Demo Scenario
 
 1. Open Overview and show the FY2027 Rp500B company budget.
-2. Show Technology's Rp60B budget and the Ramadan Campaign entry point.
-3. Open Ramadan Campaign and show its Rp5B cross-department allocation.
+2. Show Technology's Rp60B budget and the Projects entry point.
+3. Open Projects, select Ramadan Campaign, and show its Rp5B cross-department allocation.
 4. Show Technology's Rp800M allocation: Rp200M Payment-Confirmed Spend and Rp600M Available to Commit.
 5. Switch to the Technology Requester and create a Rp150M microsite request.
 6. Show that submission does not change the financial figures.

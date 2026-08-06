@@ -1,4 +1,4 @@
-export const STORAGE_KEY = 'budget-execution-state-v1';
+export const STORAGE_KEY = 'budget-execution-state-v2';
 
 export const STATUS = Object.freeze({
   AWAITING_LINE_MANAGER: 'Awaiting Line Manager Approval',
@@ -18,6 +18,13 @@ export const ROLE = Object.freeze({
   EXECUTIVE_VIEWER: 'Executive Viewer',
 });
 
+export const PAGE = Object.freeze({
+  OVERVIEW: 'overview',
+  PROJECTS: 'projects',
+  PROJECT: 'project',
+  WORKSPACE: 'workspace',
+});
+
 export const FUNDING_SOURCE = Object.freeze({
   PROJECT_ALLOCATION: 'PROJECT_ALLOCATION',
   BUDGET_LINE_UNALLOCATED: 'BUDGET_LINE_UNALLOCATED',
@@ -34,6 +41,13 @@ export const EVENT_TYPE = Object.freeze({
 
 export const APPROVED_UNPAID = 'approvedUnpaidCommitments';
 export const PAYMENT_CONFIRMED = 'paymentConfirmedSpend';
+export const MAX_PROOF_SIZE = 5 * 1024 * 1024;
+
+const PROOF_MIME_EXTENSIONS = Object.freeze({
+  'application/pdf': ['pdf'],
+  'image/png': ['png'],
+  'image/jpeg': ['jpg', 'jpeg'],
+});
 
 const DAY = 86_400_000;
 const now = () => new Date().toISOString();
@@ -58,6 +72,9 @@ export function createInitialState() {
     { id: 'user-technology-requester', name: 'Alya Pranata', role: ROLE.REQUESTER, departmentId: 'technology', managerId: 'user-technology-line-manager' },
     { id: 'user-technology-line-manager', name: 'Raka Wijaya', role: ROLE.LINE_MANAGER, departmentId: 'technology', managerId: null },
     { id: 'user-technology-budget-owner', name: 'Dewi Lestari', role: ROLE.BUDGET_OWNER, departmentId: 'technology', managerId: null },
+    { id: 'user-marketing-requester', name: 'Maya Santoso', role: ROLE.REQUESTER, departmentId: 'marketing', managerId: 'user-marketing-line-manager' },
+    { id: 'user-marketing-line-manager', name: 'Bima Aditya', role: ROLE.LINE_MANAGER, departmentId: 'marketing', managerId: null },
+    { id: 'user-marketing-budget-owner', name: 'Ratih Permata', role: ROLE.BUDGET_OWNER, departmentId: 'marketing', managerId: null },
     { id: 'user-finance-reviewer', name: 'Nina Kurnia', role: ROLE.FINANCE_REVIEWER, departmentId: 'finance', managerId: null },
     { id: 'user-finance-payment-processor', name: 'Siti Rahma', role: ROLE.FINANCE_PAYMENT_PROCESSOR, departmentId: 'finance', managerId: null },
     { id: 'user-executive-viewer', name: 'Fajar Hidayat', role: ROLE.EXECUTIVE_VIEWER, departmentId: 'finance', managerId: null },
@@ -157,7 +174,7 @@ export function createInitialState() {
     metadata: { amount: 200_000_000, bank: 'Bank Syariah Indonesia', reference: 'TRX-20270130-2001', proofFileName: 'opening-proof.pdf', proofFileType: 'application/pdf', proofFileSize: 2048 },
   }];
 
-  return { version: 1, company: { name: 'Budget Execution', financialYear: 'FY2027', approvedAmount: 500_000_000_000 }, departments, users, departmentBudgets, budgetLines, projects, allocations, requests, payments, activityEvents };
+  return { version: 2, company: { name: 'Budget Execution', financialYear: 'FY2027', approvedAmount: 500_000_000_000 }, departments, users, departmentBudgets, budgetLines, projects, allocations, requests, payments, activityEvents };
 }
 
 export function cloneState(state) {
@@ -266,6 +283,100 @@ export function deriveProjectReport(state, projectId) {
   };
 }
 
+export function deriveProjectsReport(state) {
+  return state.projects.map((project) => {
+    const report = deriveProjectReport(state, project.id);
+    const requestCount = state.requests.filter((request) => getProjectForRequest(state, request)?.id === project.id).length;
+    return { ...report, requestCount };
+  });
+}
+
+function isCompanyWideRole(role) {
+  return role === ROLE.FINANCE_REVIEWER || role === ROLE.EXECUTIVE_VIEWER;
+}
+
+function isDepartmentProjectRole(role) {
+  return role === ROLE.REQUESTER || role === ROLE.LINE_MANAGER || role === ROLE.BUDGET_OWNER;
+}
+
+export function getActorOverviewScope(state, actorId) {
+  const actor = getUser(state, actorId);
+  if (isCompanyWideRole(actor.role)) return { type: 'company', departmentId: null };
+  if (actor.role === ROLE.BUDGET_OWNER) return { type: 'department', departmentId: actor.departmentId };
+  return null;
+}
+
+export function canActorAccessPage(state, actorId, targetPage) {
+  const actor = getUser(state, actorId);
+  if (targetPage === PAGE.OVERVIEW) return Boolean(getActorOverviewScope(state, actorId));
+  if (targetPage === PAGE.WORKSPACE) return true;
+  if (targetPage === PAGE.PROJECTS || targetPage === PAGE.PROJECT) {
+    return isCompanyWideRole(actor.role) || isDepartmentProjectRole(actor.role);
+  }
+  return false;
+}
+
+export function getDefaultPageForActor(state, actorId) {
+  const actor = getUser(state, actorId);
+  return getActorOverviewScope(state, actorId) ? PAGE.OVERVIEW : PAGE.WORKSPACE;
+}
+
+export function getDefaultWorkspaceTab(state, actorId) {
+  const actor = getUser(state, actorId);
+  if (actor.role === ROLE.FINANCE_PAYMENT_PROCESSOR) return 'payment';
+  if (actor.role === ROLE.LINE_MANAGER || actor.role === ROLE.BUDGET_OWNER) return 'approvals';
+  return 'all';
+}
+
+export function deriveOverviewReportForActor(state, actorId) {
+  const scope = getActorOverviewScope(state, actorId);
+  if (!scope) return null;
+  if (scope.type === 'company') return { ...deriveCompanyReport(state), scope: 'company', scopeDepartmentId: null };
+  const departmentReport = deriveDepartmentReports(state).find((row) => row.department.id === scope.departmentId);
+  if (!departmentReport) return null;
+  return {
+    scope: 'department',
+    scopeDepartmentId: scope.departmentId,
+    approvedBudget: departmentReport.approvedBudget,
+    remainingBudget: departmentReport.remainingBudget,
+    allocatedToProjects: departmentReport.allocatedToProjects,
+    departmentUnallocatedBudget: departmentReport.departmentUnallocatedBudget,
+    approvedUnpaidCommitments: departmentReport.approvedUnpaidCommitments,
+    paymentConfirmedSpend: departmentReport.paymentConfirmedSpend,
+    departments: [departmentReport],
+  };
+}
+
+export function deriveProjectReportForActor(state, projectId, actorId) {
+  const actor = getUser(state, actorId);
+  if (!canActorAccessPage(state, actorId, PAGE.PROJECT)) return null;
+  const report = deriveProjectReport(state, projectId);
+  const allocations = isCompanyWideRole(actor.role)
+    ? report.allocations
+    : report.allocations.filter((row) => row.departmentId === actor.departmentId);
+  const visibleRequestIds = new Set(getVisibleRequests(state, actorId).map((request) => request.id));
+  const requestCount = state.requests.filter((request) => visibleRequestIds.has(request.id) && getProjectForRequest(state, request)?.id === projectId).length;
+  return {
+    ...report,
+    allocations,
+    allocationAmount: allocations.reduce((sum, row) => sum + row.metrics.sourceAmount, 0),
+    approvedUnpaidCommitments: allocations.reduce((sum, row) => sum + row.metrics.approvedUnpaidCommitments, 0),
+    paymentConfirmedSpend: allocations.reduce((sum, row) => sum + row.metrics.paymentConfirmedSpend, 0),
+    availableToCommit: allocations.reduce((sum, row) => sum + row.metrics.availableToCommit, 0),
+    requestCount,
+  };
+}
+
+export function deriveProjectsReportForActor(state, actorId) {
+  if (!canActorAccessPage(state, actorId, PAGE.PROJECTS)) return [];
+  return state.projects.map((project) => deriveProjectReportForActor(state, project.id, actorId));
+}
+
+export function getProjectAllocationForRequester(state, projectId, actorId) {
+  return getFundingSourcesForRequester(state, actorId, FUNDING_SOURCE.PROJECT_ALLOCATION)
+    .find((allocation) => allocation.projectId === projectId) ?? null;
+}
+
 export function deriveDepartmentReports(state) {
   return state.departments.map((department) => {
     const budget = state.departmentBudgets.find((item) => item.departmentId === department.id);
@@ -273,25 +384,32 @@ export function deriveDepartmentReports(state) {
     const lineIds = new Set(lines.map((line) => line.id));
     const allocatedToProjects = state.allocations.filter((allocation) => lineIds.has(allocation.budgetLineId)).reduce((sum, allocation) => sum + allocation.allocatedAmount, 0);
     const requests = state.requests.filter((request) => request.departmentId === department.id);
+    const budgetLineMetrics = lines.map((line) => deriveFundingSourceMetrics(state, { type: FUNDING_SOURCE.BUDGET_LINE_UNALLOCATED, id: line.id }));
+    const approvedBudget = budget?.approvedAmount ?? 0;
+    const paymentConfirmedSpend = requests.reduce((sum, request) => sum + requestSpend(state, request), 0);
     return {
       department,
-      approvedBudget: budget?.approvedAmount ?? 0,
+      approvedBudget,
+      remainingBudget: approvedBudget - paymentConfirmedSpend,
       allocatedToProjects,
-      departmentUnallocatedBudget: (budget?.approvedAmount ?? 0) - allocatedToProjects,
+      departmentUnallocatedBudget: budgetLineMetrics.reduce((sum, metrics) => sum + metrics.availableToCommit, 0),
       approvedUnpaidCommitments: requests.reduce((sum, request) => sum + requestCommitment(request), 0),
-      paymentConfirmedSpend: requests.reduce((sum, request) => sum + requestSpend(state, request), 0),
+      paymentConfirmedSpend,
     };
   });
 }
 
 export function deriveCompanyReport(state) {
   const departments = deriveDepartmentReports(state);
+  const approvedBudget = state.company.approvedAmount;
+  const paymentConfirmedSpend = departments.reduce((sum, row) => sum + row.paymentConfirmedSpend, 0);
   return {
-    approvedBudget: state.company.approvedAmount,
+    approvedBudget,
+    remainingBudget: approvedBudget - paymentConfirmedSpend,
     allocatedToProjects: departments.reduce((sum, row) => sum + row.allocatedToProjects, 0),
     departmentUnallocatedBudget: departments.reduce((sum, row) => sum + row.departmentUnallocatedBudget, 0),
     approvedUnpaidCommitments: departments.reduce((sum, row) => sum + row.approvedUnpaidCommitments, 0),
-    paymentConfirmedSpend: departments.reduce((sum, row) => sum + row.paymentConfirmedSpend, 0),
+    paymentConfirmedSpend,
     departments,
   };
 }
@@ -308,25 +426,35 @@ function validateRequestFields(input) {
   if (!input.justification?.trim()) throw new Error('Business justification is required.');
 }
 
+export function validateRequestedAmount(state, source, requestedAmount) {
+  if (!Number.isInteger(requestedAmount) || requestedAmount <= 0) throw new Error('Requested amount must be greater than zero.');
+  const metrics = deriveFundingSourceMetrics(state, source);
+  if (requestedAmount > metrics.availableToCommit) {
+    const maximum = Math.max(0, metrics.availableToCommit);
+    throw new Error(`Requested amount exceeds the Funding Source available to commit. Available to commit: ${formatIDR(metrics.availableToCommit)}. Maximum valid amount: ${formatIDR(maximum)}.`);
+  }
+  return metrics;
+}
+
 export function createRequest(state, input) {
   const requester = getUser(state, input.actorId);
   if (requester.role !== ROLE.REQUESTER) throw new Error('Only a Requester can submit a request.');
   validateRequestFields(input);
   if (!Object.values(FUNDING_SOURCE).includes(input.fundingSourceType)) throw new Error('Funding Source type is required.');
-  const budgetLine = getBudgetLine(state, input.budgetLineId);
+  const budgetLine = requireRecord(state.budgetLines, input.budgetLineId, 'Budget Line');
   const departmentId = budgetLineDepartmentId(state, input.budgetLineId);
   if (departmentId !== requester.departmentId) throw new Error('Funding Source must belong to the requester department.');
   let projectAllocationId;
   if (input.fundingSourceType === FUNDING_SOURCE.PROJECT_ALLOCATION) {
     const allocation = getProjectAllocation(state, input.projectAllocationId);
+    if (!getFundingSourcesForRequester(state, requester.id, FUNDING_SOURCE.PROJECT_ALLOCATION).some((source) => source.id === allocation.id)) throw new Error('Project Allocation must belong to the requester department.');
     if (allocation.budgetLineId !== input.budgetLineId) throw new Error('Project Allocation and Budget Line must be related.');
     projectAllocationId = allocation.id;
   } else if (input.projectAllocationId) {
     throw new Error('Non-project requests cannot include a Project Allocation.');
   }
   const source = { type: input.fundingSourceType, id: input.fundingSourceType === FUNDING_SOURCE.PROJECT_ALLOCATION ? projectAllocationId : input.budgetLineId };
-  const metrics = deriveFundingSourceMetrics(state, source);
-  if (input.requestedAmount > metrics.availableToCommit) throw new Error('Requested amount exceeds the Funding Source available to commit.');
+  validateRequestedAmount(state, source, input.requestedAmount);
   const budget = state.departmentBudgets.find((item) => item.departmentId === departmentId);
   const request = {
     id: nextId('request', state.requests),
@@ -356,7 +484,7 @@ export function createRequest(state, input) {
 function activeApproval(request) {
   if (request.status === STATUS.AWAITING_LINE_MANAGER) return { role: ROLE.LINE_MANAGER, actorId: request.lineManagerApproverId, nextStatus: STATUS.AWAITING_BUDGET_OWNER, eventType: EVENT_TYPE.LINE_MANAGER_APPROVED };
   if (request.status === STATUS.AWAITING_BUDGET_OWNER) return { role: ROLE.BUDGET_OWNER, actorId: request.budgetOwnerApproverId, nextStatus: STATUS.AWAITING_FINANCE, eventType: EVENT_TYPE.BUDGET_OWNER_APPROVED };
-  if (request.status === STATUS.AWAITING_FINANCE) return { role: ROLE.FINANCE_REVIEWER, nextStatus: STATUS.APPROVED_AWAITING_PAYMENT, eventType: EVENT_TYPE.FINANCE_APPROVED };
+  if (request.status === STATUS.AWAITING_FINANCE) return { role: ROLE.FINANCE_REVIEWER, actorId: null, nextStatus: STATUS.APPROVED_AWAITING_PAYMENT, eventType: EVENT_TYPE.FINANCE_APPROVED };
   return null;
 }
 
@@ -365,7 +493,8 @@ function assertApprovalActor(state, request, actorId) {
   if ([STATUS.REJECTED, STATUS.PAYMENT_CONFIRMED].includes(request.status)) throw new Error('Request is terminal and cannot be changed.');
   const current = activeApproval(request);
   if (!current) throw new Error('This request is not at an active approval stage.');
-  if (actor.role !== current.role || (current.actorId && actor.id !== current.actorId)) throw new Error('Actor is not authorized for this approval stage.');
+  const assignedActor = current.actorId ? getUser(state, current.actorId) : state.users.find((user) => user.role === current.role);
+  if (actor.role !== current.role || (assignedActor && actor.id !== assignedActor.id)) throw new Error('Actor is not authorized for this approval stage.');
   return { actor, current };
 }
 
@@ -399,7 +528,7 @@ export function approveRequest(state, requestId, actorId) {
   const { actor, current } = assertApprovalActor(state, request, actorId);
   if (request.status === STATUS.AWAITING_FINANCE) {
     const preview = getFinanceImpactPreview(state, request.id);
-    if (preview.projectedAvailableToCommit < 0) throw new Error('Finance approval is blocked because projected available to commit is negative.');
+    validateRequestedAmount(state, { type: request.fundingSourceType, id: request.fundingSourceType === FUNDING_SOURCE.PROJECT_ALLOCATION ? request.projectAllocationId : request.budgetLineId }, request.requestedAmount);
     request.approvedAmount = request.requestedAmount;
     request.approvedAt = now();
   }
@@ -417,11 +546,16 @@ export function rejectRequest(state, requestId, actorId, reason) {
   return request;
 }
 
-function validateProof(proof) {
-  if (!proof?.name || !proof?.type || !Number.isFinite(proof.size)) throw new Error('Transfer proof is required.');
-  const acceptedTypes = ['application/pdf', 'image/png', 'image/jpeg'];
-  const acceptedExtension = /\.(pdf|png|jpe?g)$/i.test(proof.name);
-  if ((!acceptedTypes.includes(proof.type) && !acceptedExtension) || proof.size > 5 * 1024 * 1024) throw new Error('Transfer proof must be PDF, PNG, JPG, or JPEG up to 5 MB.');
+export function validateProofMetadata(proof) {
+  if (!proof?.name || !Number.isFinite(proof.size) || proof.size < 0) throw new Error('Transfer proof is required.');
+  const extension = proof.name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1] ?? '';
+  const type = proof.type?.toLowerCase() ?? '';
+  const extensionIsAccepted = Object.values(PROOF_MIME_EXTENSIONS).some((extensions) => extensions.includes(extension));
+  const typeIsAccepted = Object.prototype.hasOwnProperty.call(PROOF_MIME_EXTENSIONS, type);
+  const typeMatchesExtension = typeIsAccepted && PROOF_MIME_EXTENSIONS[type].includes(extension);
+  const validTypeAndExtension = type ? typeIsAccepted && typeMatchesExtension : extensionIsAccepted;
+  if (!validTypeAndExtension || proof.size > MAX_PROOF_SIZE) throw new Error('Transfer proof must be a matching PDF, PNG, JPG, or JPEG up to 5 MB.');
+  return true;
 }
 
 export function confirmPayment(state, requestId, actorId, input) {
@@ -431,7 +565,7 @@ export function confirmPayment(state, requestId, actorId, input) {
   if (request.status === STATUS.PAYMENT_CONFIRMED || requestPayment(state, request.id)) throw new Error('Payment is already confirmed for this request.');
   if (request.status !== STATUS.APPROVED_AWAITING_PAYMENT) throw new Error('Only an approved request can receive payment confirmation.');
   if (!input?.paymentDate || !input.beneficiaryName?.trim() || !input.destinationBank?.trim() || !input.transferReference?.trim()) throw new Error('Payment date, beneficiary, destination bank, and transfer reference are required.');
-  validateProof(input.proof);
+  validateProofMetadata(input.proof);
   const payment = {
     id: nextId('payment', state.payments),
     expenseRequestId: request.id,
@@ -466,21 +600,28 @@ export function getVisibleRequests(state, actorId) {
   if (actor.role === ROLE.LINE_MANAGER) return state.requests.filter((request) => request.lineManagerApproverId === actor.id);
   if (actor.role === ROLE.BUDGET_OWNER) return state.requests.filter((request) => request.budgetOwnerApproverId === actor.id);
   if (actor.role === ROLE.FINANCE_PAYMENT_PROCESSOR) return state.requests.filter((request) => [STATUS.APPROVED_AWAITING_PAYMENT, STATUS.PAYMENT_CONFIRMED].includes(request.status));
-  return state.requests;
+  if (actor.role === ROLE.FINANCE_REVIEWER || actor.role === ROLE.EXECUTIVE_VIEWER) return state.requests;
+  return [];
 }
 
 export function getActiveApproval(state, request) {
   const current = activeApproval(request);
   if (!current) return null;
   const actor = state.users.find((user) => user.id === current.actorId) ?? state.users.find((user) => user.role === current.role);
-  return { ...current, actor };
+  return { ...current, actorId: actor?.id ?? null, actor };
+}
+
+export function canActorActOnRequest(state, request, actorId) {
+  const actor = getUser(state, actorId);
+  const pending = getActiveApproval(state, request);
+  return Boolean(pending && pending.actorId === actor.id && pending.role === actor.role);
 }
 
 export function getQueueCounts(state, actorId) {
   const requests = getVisibleRequests(state, actorId);
   return {
     all: requests.length,
-    myApprovals: requests.filter((request) => getActiveApproval(state, request)?.actorId === actorId).length,
+    myApprovals: requests.filter((request) => canActorActOnRequest(state, request, actorId)).length,
     awaitingPayment: requests.filter((request) => request.status === STATUS.APPROVED_AWAITING_PAYMENT).length,
   };
 }

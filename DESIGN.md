@@ -19,7 +19,7 @@
 - **Primary audience:** Finance Reviewer and Finance Payment Processor.
 - **Supporting audience:** Requester, Line Manager, Department Budget Owner, and Executive Viewer.
 - **Audience state on arrival:** The user knows their role but needs immediate clarity about what requires attention, what they are authorized to do, and the current financial consequence.
-- **Primary outcome:** Complete and verify the Ramadan Campaign request lifecycle while its figures reconcile across Request Workspace, Project Detail, and Overview.
+- **Primary outcome:** Complete and verify the Ramadan Campaign request lifecycle while its figures reconcile across Request Workspace, Projects, Project Detail, and Overview.
 - **Primary product action:** Advance the selected request through the one role-authorized action available at its current stage.
 - **Secondary actions:** Create a request, inspect budget position, review Activity History, switch simulated roles, and reset the canonical demo.
 
@@ -87,7 +87,7 @@ Use tabular numerals for every amount and aligned numeric column. Keep `Rp150M`,
 ### Composition and Spacing
 
 - Build a persistent application shell with a 224 px left navigation rail on presentation-width screens and a compact top utility bar.
-- Place Overview, Ramadan Campaign, and Request Workspace in the primary navigation. Keep FY2027 context, active simulated role, and Reset Demo Data in the persistent shell.
+- Place Overview, Projects, and Request Workspace in the primary navigation. Keep FY2027 context, active simulated role, and Reset Demo Data in the persistent shell.
 - Use a fluid main canvas with a 1600 px maximum and 24–32 px page gutters at desktop widths.
 - Base spacing on a 4 px unit. Use 8 px within compact controls, 16 px within table rows and field groups, 24 px between related modules, and 40–56 px between major page regions.
 - Prefer ruled groups, aligned columns, and shared surfaces over a grid of floating cards.
@@ -145,7 +145,7 @@ The static before/after values must remain fully understandable if the animation
 ### Persistent Navigation
 
 - Product mark and title: `Budget Execution`.
-- Primary destinations: Overview, Ramadan Campaign, Request Workspace.
+- Primary destinations are role-scoped: company Overview for Finance Reviewer and Executive Viewer, department-scoped Overview for Department Budget Owner, department-scoped Projects for Requester/Line Manager/Budget Owner, and Request Workspace for every role.
 - Current financial year: `FY2027`.
 - Persistent simulated actor control showing person, role, and department.
 - `Reset Demo Data` as a secondary utility action, visually separated from normal workflow actions and protected by confirmation.
@@ -169,14 +169,15 @@ Compact table rows may use shorter labels only when the full status is available
 
 | # | Surface | Narrative job | Content and composition | Interaction or motion |
 | --- | --- | --- | --- | --- |
-| 1 | Overview | Establish the source and current company position | Page title and FY2027 context; one continuous position strip for Approved Budget, Allocated to Projects, Department Unallocated Budget, Approved unpaid commitments, and Payment-confirmed spend; department table below; Ramadan Campaign entry highlighted | Values appear without count-up. Row hover reveals the available destination; selecting Ramadan Campaign moves into Project Detail with project context preserved |
-| 2 | Project Detail | Explain the cross-department project without losing ownership | Project identity, owner, dates, and status; a four-value financial equation for Project Allocation, Approved unpaid commitments, Payment-confirmed spend, and Available to commit; department-allocation table; related requests | Selecting Technology’s allocation filters or emphasizes its requests. `New Request` opens with the Project Allocation preselected |
-| 3 | New Request modal | Create a valid request against one explicit Funding Source | Funding-source type first; then Budget Line and Project Allocation when applicable; current Available to commit stays visible beside requested amount; derived department, approvers, and project are read-only context | Reveal only relevant fields. Validate relationships immediately. Submission closes the modal, selects the new request, and shows that financial figures did not change |
-| 4 | Request Workspace queue | Make role-owned work obvious | Tabs for All Requests, My Approvals, and Awaiting Payment Confirmation; compact list at left, selected detail at right; row shows title, amount, status, next actor, and required date | Role switch updates tab counts and available actions without resetting the selected request when it remains visible |
-| 5 | Request detail | Present one authoritative request record | Identity and amount at top; status lane and pending approver; Funding Source, requester, vendor, required date, and justification; financial impact; Payment Information when present; Activity History | Active-stage actions stay in a sticky action area. Approval and rejection open focused confirmation dialogs with consequence copy |
-| 6 | Finance impact preview | Make the commitment decision inspectable | Show Funding Source amount, current Approved unpaid commitments, Payment-confirmed spend, current Available to commit, request amount, and projected Available to commit in a compact equation layout | Recalculate on open. Block when projected remaining is negative; show an inline amber warning at 80% utilization without disabling approval |
-| 7 | Record Payment modal | Record external evidence without implying execution | Locked approved amount; payment date, beneficiary, destination bank, transfer reference, and transfer-proof selector; accepted type and size guidance adjacent to upload | Validate proof immediately, show filename/type/size, allow replace/remove before confirmation, then run the signature reclassification transition |
-| 8 | Activity History | Prove the chain of custody | One chronological ruled list with event, actor, role, timestamp, resulting status, and conditional rejection/payment metadata | New events append once and briefly highlight. Do not create generic duplicate status-change events |
+| 1 | Overview | Establish the source and current company position | Page title and FY2027 context; one continuous position strip for Approved Budget, Allocated to Projects, Department Unallocated Budget, Approved unpaid commitments, and Payment-confirmed spend; department table below; project spotlight entry highlighted | Values appear without count-up. Selecting the project spotlight moves into Project Detail with project context preserved |
+| 2 | Projects | Make project records discoverable without putting one project in global navigation | Project list with owner, status, dates, allocation, available-to-commit amount, and related request count | Selecting a project opens its Project Detail; Projects remains the active parent destination |
+| 3 | Project Detail | Explain the cross-department project without losing ownership | Project identity, owner, dates, and status; a four-value financial equation for Project Allocation, Approved unpaid commitments, Payment-confirmed spend, and Available to commit; department-allocation table; related requests | Selecting an allocation emphasizes its row. `New Request` opens with the relevant Project Allocation preselected when the requester owns one |
+| 4 | New Request modal | Create a valid request against one explicit Funding Source | Funding-source type first; then Budget Line and Project Allocation when applicable; current Available to commit stays visible beside requested amount; derived department, approvers, and project are read-only context | Reveal only relevant fields. Validate relationships immediately. Submission closes the modal, selects the new request, and shows that financial figures did not change |
+| 5 | Request Workspace queue | Make role-owned work obvious | Tabs for All Requests, My Approvals, and Awaiting Payment Confirmation; compact list at left, selected detail at right; row shows title, amount, status, next actor, and required date | Role switch updates tab counts and available actions without resetting the selected request when it remains visible |
+| 6 | Request detail | Present one authoritative request record | Identity and amount at top; status lane and pending approver; Funding Source, requester, vendor, required date, and justification; financial impact; Payment Information when present; Activity History | Active-stage actions stay in a sticky action area. Approval and rejection open focused confirmation dialogs with consequence copy |
+| 7 | Finance impact preview | Make the commitment decision inspectable | Show Funding Source amount, current Approved unpaid commitments, Payment-confirmed spend, current Available to commit, request amount, and projected Available to commit in a compact equation layout | Recalculate on open. Block when projected remaining is negative; show an inline amber warning at 80% utilization without disabling approval |
+| 8 | Record Payment modal | Record external evidence without implying execution | Locked approved amount; payment date, beneficiary, destination bank, transfer reference, and transfer-proof selector; accepted type and size guidance adjacent to upload | Validate proof immediately, show filename/type/size, allow replace/remove before confirmation, then run the signature reclassification transition |
+| 9 | Activity History | Prove the chain of custody | One chronological ruled list with event, actor, role, timestamp, resulting status, and conditional rejection/payment metadata | New events append once and briefly highlight. Do not create generic duplicate status-change events |
 
 ## Key Surface Details
 
@@ -185,16 +186,16 @@ Compact table rows may use shorter labels only when the full status is available
 - Present the company’s `Rp500B` Approved Budget as context, not as a celebratory KPI.
 - Use a single “Budget position” strip rather than five unrelated cards. Each category receives a definition affordance because the figures are related but not interchangeable.
 - Make the department table the primary analytical surface. Use sticky headers, right-aligned tabular amounts, and a clear Technology row.
-- Place the Ramadan Campaign entry directly below or alongside the table as a project object with `Rp5B` total Project Allocation and four contributing departments.
-- Keep the global `New Request` action visible but secondary to the Finance overview.
+- Place the project spotlight directly below or alongside the table as a project object with its total Project Allocation and contributing departments.
+- Keep `New Request` available only to Requester roles and secondary to their project/workspace context.
 
 ### Project Detail
 
-- Lead with `Ramadan Campaign`, project owner, dates, status, and total `Rp5B` Project Allocation.
+- Lead with the selected project name, owner, dates, status, and total Project Allocation.
 - Use a labeled equation row rather than a generic chart: Allocation minus Approved unpaid commitments minus Payment-confirmed spend equals Available to commit.
 - In the department-allocation table, keep department ownership adjacent to Budget Line and Project Allocation.
 - Make Technology’s `Rp800M` allocation and its opening `Rp200M` Payment-confirmed spend easy to locate during the demo.
-- Use direct row links to related requests. Do not create a separate project portfolio or department detail route.
+- Use direct row links to related requests. Keep Projects as the parent list and avoid a separate department detail route.
 
 ### Request Workspace
 
@@ -207,9 +208,11 @@ Compact table rows may use shorter labels only when the full status is available
 
 ## Responsive Behavior
 
+The implementation uses this viewport contract: at 1280 px and above the full rail and split Request Workspace remain available; from 761–1279 px the workspace stacks before either pane becomes unreadable and wide tables expose an overflow cue; at 760 px and below the shell uses an equal-width navigation grid, a separate actor/reset utility area, a two-column status lane, and a near-full-height dialog with one scrolling body. At every width, primary actions remain at least 44 px high, overflow tables keep a sticky first column, and Funding Source, amount, status, next actor, and financial effect remain visible.
+
 - **Large screens (1280 px and above):** Show the full navigation rail, position strips in one row, wide tables, and Request Workspace split view. Optimize the primary demo for a 1440×900 viewport.
-- **Medium screens (768–1279 px):** Collapse the rail to icons with accessible labels or a drawer. Wrap metric strips into two rows while preserving their reading order. Allow the Request Workspace list to narrow before switching to stacked navigation.
-- **Small screens (below 768 px):** Use a top navigation drawer, one-column page flow, full-screen modals, and a list-to-detail navigation pattern. Keep the active role and current status visible. Allow wide financial tables to scroll horizontally with a sticky first column rather than hiding columns.
+- **Medium screens (761–1279 px):** Keep the labeled rail, wrap metric strips into two rows, stack Request Workspace before the panes become unreadable, and show table overflow cues.
+- **Small screens (760 px and below):** Use the compact equal-width navigation grid, one-column page flow, near-full-height dialogs, and a stacked workspace. Keep the active role and current status visible. Allow wide financial tables to scroll horizontally with a sticky first column rather than hiding columns.
 - **Touch behavior:** Provide at least 44×44 px action targets, avoid hover-only disclosure, and keep modal actions above the browser safe area.
 - **Cross-breakpoint invariants:** Never hide Funding Source, amount, status, next responsible role, or financial effect. Preserve all domain labels and do not reduce status to color-only dots.
 
@@ -255,7 +258,7 @@ No application stack is present in the current repository. For the six-hour prot
 ## Acceptance Criteria
 
 - A reviewer can identify the active simulated actor, their role, the selected request’s status, and the next responsible role without opening another screen.
-- Overview, Project Detail, and Request Workspace display the same underlying amounts with the exact PRD terminology and consistent rupiah formatting.
+- Overview, Projects, Project Detail, and Request Workspace display the same underlying amounts with the exact PRD terminology and consistent rupiah formatting.
 - The `Rp150M` Finance approval visibly creates an Approved unpaid commitment and changes Available to commit from `Rp600M` to `Rp450M`.
 - Payment confirmation visibly changes Approved unpaid commitments from `Rp150M` to `Rp0` and Payment-confirmed spend from `Rp200M` to `Rp350M` while Available to commit remains `Rp450M`.
 - Line Manager and Department Budget Owner approvals produce no visual or numeric implication of commitment or payment.

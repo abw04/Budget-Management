@@ -23,9 +23,10 @@ Working decisions from the PRD grilling session. Implementation should begin onl
 - Allow any approver to reject a request as a terminal action; require a comment and record the event in Activity History.
 - Record only meaningful business events: Request Submitted, Line Manager Approved, Department Budget Owner Approved, Finance Approved, Request Rejected, and Payment Confirmed; do not add duplicate generic status-change events.
 - Every Activity History event records actor identity, actor role, system timestamp, resulting status, and any required comment or payment evidence metadata.
-- Use three primary pages: Overview, Project Detail, and Request Workspace.
-- Overview combines annual summary, department summary, and a Ramadan Campaign entry point; a separate Department Detail page is not required.
-- Project Detail combines project financials, departmental allocations, requests, and a `Create Request` modal; a separate Project Portfolio page is not required.
+- Use four primary pages: Overview, Projects, Project Detail, and Request Workspace.
+- Overview combines annual summary, department summary, and a project spotlight entry point; a separate Department Detail page is not required.
+- Projects lists available projects and opens the selected Project Detail; it is the stable navigation destination for project records.
+- Project Detail combines project financials, departmental allocations, requests, and a `Create Request` modal.
 - Request Workspace combines All Requests, My Approvals, and Awaiting Payment tabs with the selected request's details, role-dependent actions, and Activity History.
 - Use a `Record Payment` modal from the Request Workspace rather than a separate payment page.
 - Show Activity History inside Request Workspace rather than building a separate audit screen.
@@ -45,7 +46,8 @@ Working decisions from the PRD grilling session. Implementation should begin onl
 - Route Line Manager approval from the requester's reporting relationship and Department Budget Owner approval from the selected Funding Source's department; neither approver is manually selected by the requester.
 - The required request fields are title, funding-source type, Project Allocation when project-backed, budget line, vendor or recipient, requested amount, required date, and business justification.
 - Derive requester, requester department, Line Manager, Department Budget Owner, current availability, and project association from the signed-in role and selected Funding Source.
-- Requesters see requests they created; Line Managers see requests from their direct reports; Department Budget Owners see requests charged to allocations they own; Finance Reviewers and Executive Viewers see all requests; Finance Payment Processors see requests awaiting payment and completed payment confirmations.
+- Requesters see requests they created; Line Managers see requests from their direct reports and project allocations in their own department; Department Budget Owners see requests charged to allocations they own and their department overview; Finance Reviewers and Executive Viewers see all requests and company-wide reporting; Finance Payment Processors see requests awaiting payment and completed payment confirmations.
+- Overview is available company-wide only to Finance Reviewers and Executive Viewers. Department Budget Owners receive a department-scoped Overview. Requesters, Line Managers, and Finance Payment Processors do not receive Overview access. Projects are scoped to the active user's department for Requesters, Line Managers, and Department Budget Owners.
 - Executive access is read-only, and each approver may act only when a request is at their stage.
 - Only the Finance Payment Processor may record payment, and only when a request is `Approved - Awaiting Payment Confirmation`; requesters cannot edit submitted requests in the initial cut.
 - The Finance Reviewer cannot confirm payment on a request they approved, and the Finance Payment Processor cannot perform Finance approval.
